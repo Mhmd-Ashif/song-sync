@@ -19,6 +19,9 @@ import {
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { SocketAPI } from "@/config";
+import { io } from "socket.io-client";
+const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export function Navbar() {
   const [logged, isLogged] = useState(false);
@@ -46,6 +49,8 @@ export function Navbar() {
         localStorage.removeItem("email");
         localStorage.removeItem("photoURL");
         localStorage.removeItem("displayName");
+        localStorage.removeItem("ownerId");
+        socket.emit("disconnect-users", localStorage.getItem("ownerId"));
         toast("Logged Out Successfully");
         navigate("/");
       })

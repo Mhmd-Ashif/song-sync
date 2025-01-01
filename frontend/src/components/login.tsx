@@ -89,9 +89,10 @@ export function GoogleButton() {
       .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
-        toast("Error Logging In", {
-          description: "Internal Server Error occurred",
-        });
+        toast(errorMessage);
+        // toast("Error Logging In", {
+        //   description: "Internal Server Error occurred",
+        // });
         console.log(errorCode, errorMessage);
       });
   };

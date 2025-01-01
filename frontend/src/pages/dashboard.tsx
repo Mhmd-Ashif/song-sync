@@ -1,5 +1,5 @@
 import { Navbar } from "@/components/navbar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Music, Headphones } from "lucide-react";
 import {
@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/input-otp";
 import loadingToast from "@/components/loading-toast";
 import { Input } from "@/components/ui/input";
+import { io } from "socket.io-client";
+import { toast } from "sonner";
+import { SocketAPI } from "@/config";
+import { useNavigate } from "react-router";
+const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export default function Dashboard() {
   const [hoverCreate, setHoverCreate] = useState(false);
@@ -25,14 +30,68 @@ export default function Dashboard() {
   const [div2, setDiv2] = useState(false);
   const [value, setValue] = useState("");
   const [roomName, setRoomName] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("Connected to WebSocket server");
+    });
+    // only needed when actual page
+    // return () => {
+    //   socket.off("connect");
+    // };
+  }, []);
 
   const joinRoom = async () => {
     console.log(value);
+    // validate the room id exist
+    // join into the websocket room
+    // redirect to /joinroom:roomId page
+    if (!(value.length < 6)) {
+      socket.emit(
+        "join-room",
+        localStorage.getItem("displayName"),
+        value,
+        ({ success, message, roomName, userType, roomId }: any) => {
+          if (success) {
+            localStorage.setItem("userType", userType);
+            localStorage.setItem("roomId", roomId);
+            toast(message);
+            navigate(`/stream/${roomId}`);
+          } else {
+            toast(message);
+          }
+        }
+      );
+    } else {
+      toast("Please Enter the valid room id");
+    }
   };
 
   const createRoom = async () => {
     loadingToast("Creating Room Please Wait ...");
     console.log(roomName);
+    // send backend request to create an redis queue with random number and a given name then
+    // create a websocket room
+    // once it done all then redirect to /creator:roomId page with hashed token it has creator in it
+    if (roomName.trim() !== "") {
+      socket.emit(
+        "create-room",
+        roomName,
+        ({ roomId, userType, ownerId }: any) => {
+          console.log("room created");
+
+          localStorage.setItem("roomId", roomId);
+          localStorage.setItem("userType", userType);
+          localStorage.setItem("ownerId", ownerId);
+          toast("Successfully Joined , please Redirect to the new page");
+          navigate(`/stream/${roomId}`);
+        }
+      );
+    } else {
+      console.log("error");
+      toast("error,Please Specify the room name to continue");
+    }
   };
 
   return (

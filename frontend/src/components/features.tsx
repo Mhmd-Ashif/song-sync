@@ -83,7 +83,7 @@ function FeatureItem({ feature, index }: any) {
           {feature.name}
         </dt>
         <dd
-          className={`mt-4 flex flex-auto flex-col text-base leading-7 text-gray-400 transition-transform duration-[1200ms] ease-in-out ${
+          className={`mt-4 flex flex-auto flex-col text-base leading-7 text-gray-400 transition-transform duration-1000 ease-in-out ${
             fadeIn
               ? `transform opacity-100 scale-100 translate-y-0 delay-[${
                   index * 200
