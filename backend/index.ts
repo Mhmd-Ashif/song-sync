@@ -1,4 +1,4 @@
-import { addUserToRoom, createRoom } from "./functions/user";
+import { addUserToRoom, checkRoom, createRoom } from "./functions/user";
 import { client } from "./redis";
 const express = require("express");
 const cors = require("cors");
@@ -28,25 +28,26 @@ app.get("/", (req: any, res: any) => {
 // socket codeingz
 
 io.on("connection", (socket: any) => {
-  console.log(socket.id);
-  console.log("a user is connected to socket server emit somethingg");
-  console.log(rooms);
-
-  socket.on("check-room", (roomId: string, ownerId: string, callback: any) => {
-    console.log("control reaches check-room");
-    const room = rooms.find((room: any) => room.roomId == roomId);
-    if (room) {
-      if (room.owner == ownerId) {
-        console.log("owner joins");
-        callback({ success: true, message: "Owner can join the room." });
+  socket.on(
+    "check-room",
+    async (roomId: string, ownerId: string, callback: any) => {
+      console.log("control reaches check-room");
+      const ifExist: any = await checkRoom(roomId, ownerId);
+      console.log(ifExist);
+      console.log("async error i guess");
+      if (ifExist.success) {
+        if (ifExist.owner == ownerId) {
+          console.log("owner joins");
+          callback({ success: true, message: "Owner can join the room." });
+        } else {
+          console.log("user joins");
+          callback({ success: true, message: "User can join the room." });
+        }
       } else {
-        console.log("user joins");
-        callback({ success: true, message: "User can join the room." });
+        callback({ success: false, message: "Room does not exist." });
       }
-    } else {
-      callback({ success: false, message: "Room does not exist." });
     }
-  });
+  );
 
   socket.on("create-room", async (roomName: string, callback: any) => {
     console.log("created successfully");
