@@ -81,6 +81,7 @@ export function Navbar() {
                     <Avatar>
                       <AvatarImage
                         src={`${localStorage.getItem("photoURL")}`}
+                        className="hover:cursor-pointer"
                       />
                       <AvatarFallback>
                         {localStorage.getItem("displayName")?.split("")[0]}
