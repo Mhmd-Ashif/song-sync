@@ -1,3 +1,4 @@
+import { json } from "stream/consumers";
 import { client } from "../redis";
 
 // chumma - testing purpose
@@ -29,6 +30,7 @@ export const addUserToRoom = async (
   socketId: any
 ) => {
   try {
+
     const roomKey = `room:${roomId}`;
     const allUsers = await client.hGet(roomKey, "users");
     let users: any[] = [];
@@ -37,7 +39,6 @@ export const addUserToRoom = async (
     }
     users.push({ displayName, socketId });
     await client.hSet(roomKey, "users", JSON.stringify(users));
-    console.log(`User ${displayName} added to room ${roomId}.`);
     return true;
   } catch (error) {
     console.error("Error adding user to room:", error);
@@ -50,10 +51,29 @@ export const checkRoom = async (roomId: string, ownerId: string) => {
     const roomKey = `room:${roomId}`;
     // get the data from the redis
     const roomData = await client.hGetAll(roomKey);
-    console.log("got the result");
-    console.log(roomData.status);
     if (roomData.status) {
       return { success: true, owner: roomData.ownerId };
+    } else {
+      return false;
+    }
+  } catch (error: any) {
+    console.log(error.message);
+    return false;
+  }
+};
+
+export const leaveRoom = async (roomId: string, socketId: string) => {
+  try {
+    const key = `room:${roomId}`;
+    const getUsers = await client.hGet(key, "users");
+    if (getUsers) {
+      const parseIt = JSON.parse(getUsers);
+
+      const removeUser = parseIt.filter(
+        (user: any) => user.socketId != socketId
+      );
+      await client.hSet(key, "users", JSON.stringify(removeUser));
+      return true;
     } else {
       return false;
     }

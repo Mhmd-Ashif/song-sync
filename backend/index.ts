@@ -1,4 +1,9 @@
-import { addUserToRoom, checkRoom, createRoom } from "./functions/user";
+import {
+  addUserToRoom,
+  checkRoom,
+  createRoom,
+  leaveRoom,
+} from "./functions/user";
 import { client } from "./redis";
 const express = require("express");
 const cors = require("cors");
@@ -31,10 +36,8 @@ io.on("connection", (socket: any) => {
   socket.on(
     "check-room",
     async (roomId: string, ownerId: string, callback: any) => {
-      console.log("control reaches check-room");
       const ifExist: any = await checkRoom(roomId, ownerId);
-      console.log(ifExist);
-      console.log("async error i guess");
+
       if (ifExist.success) {
         if (ifExist.owner == ownerId) {
           console.log("owner joins");
@@ -50,10 +53,9 @@ io.on("connection", (socket: any) => {
   );
 
   socket.on("create-room", async (roomName: string, callback: any) => {
-    console.log("created successfully");
     const roomId = uuidv4().slice(0, 6);
     const ownerId = uuidv4();
-    console.log(roomId);
+
     const result = await createRoom(roomId, roomName, ownerId);
     if (result) {
       console.log("room created successfully");
@@ -72,6 +74,8 @@ io.on("connection", (socket: any) => {
     "join-room",
     async (displayName: string, roomId: string, callback: any) => {
       // same do it in the redis add user to room
+
+      // bug found first check the room exist -> then do socket.join(roomId)
       const result = await addUserToRoom(roomId, displayName, socket.id);
       if (result) {
         socket.join(roomId);
@@ -91,58 +95,44 @@ io.on("connection", (socket: any) => {
 
   // disconnect from a room
   // 1-audience will leave the room
-  // 2-creator will delete the room
-  socket.on("leave-room", (roomId: string, callback: any) => {
-    const room = rooms.find((room: any) => room.roomId == roomId);
+  // 2-creator will delete the room and remove all the users
+
+  socket.on("leave-room", async (roomId: string, callback: any) => {
+    const result = await leaveRoom(roomId, socket.id);
+    callback({ success: true });
+  });
+
+  socket.on("remove-all-users", async (roomId: string, callback: any) => {
+    const room = io.sockets.adapter.rooms.get(roomId);
+
     if (room) {
-      room.users = room.users.filter((user: any) => user.socketId == socket.id);
-      socket.leave(roomId);
-      console.log(`User ${socket.id} left room: ${roomId}`);
+      for (const socketId of room) {
+        const userSocket = io.sockets.sockets.get(socketId);
+        if (userSocket) {
+          userSocket.emit("removed-from-room", { roomId });
+          await leaveRoom(roomId, userSocket.id); 
+          userSocket.leave(roomId); 
+        }
+      }
       callback({ success: true });
-      socket.to(roomId).emit("user_left", { userId: socket.id });
+      console.log(`All users removed from room: ${roomId}`);
     } else {
-      callback({
-        success: false,
-        message: "Room Doesn't exist or server error",
-      });
+      callback({ success: false });
+      console.log(`Room ${roomId} does not exist or is empty.`);
     }
   });
-  socket.on("disconnect-users", (ownerId: string) => {
-    console.log(`User ${socket.id} disconnected`);
 
-    rooms.forEach((room: any) => {
-      room.users = room.users.filter(
-        (user: any) => user.socketId !== socket.id
-      );
-
-      if (room.owner == ownerId) {
-        console.log("room deleted");
-        io.to(room.roomId).emit("room_deleted", {
-          message: "The room owner has disconnected, and the room is deleted",
-        });
-        rooms.splice(rooms.indexOf(room), 1);
-        console.log(
-          `Room ${room.roomId} deleted because the owner disconnected.`
-        );
-      }
-      socket.disconnect();
-    });
+  socket.on("disconnect", (reason: any) => {
+    // manual remove thaan pola
+    // enter all room and remove the socketid from the users - tffffff
+    console.log(
+      `User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`
+    );
+    
   });
+  
 });
 
-// app.get("/redis", async (req: any, res: any) => {
-//   await client.set("ashif", "{name:'ashif',d.no:'2318',dept:'cse'}");
-//   const value = await client.get("ashif");
-//   console.log(value);
-//   res.json("hi there aa");
-// });
-
-// async function ConnectToRedis() {
-//   client.on("error", (err) => console.log("Redis Client Error", err));
-//   await client.connect();
-// }
-
-// ConnectToRedis();
 server.listen(PORT, async () => {
   client.on("error", (err) => console.log("Redis Client Error", err));
   await client.connect();
