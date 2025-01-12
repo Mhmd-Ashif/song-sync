@@ -3,8 +3,9 @@ import { Navbar } from "@/components/navbar";
 import { SocketAPI } from "@/config";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { io } from "socket.io-client";
-const socket = io(SocketAPI, { transports: ["websocket"] });
+import { socket } from "./dashboard";
+// import { io } from "socket.io-client";
+// const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export default function Streaming() {
   const navigate = useNavigate();

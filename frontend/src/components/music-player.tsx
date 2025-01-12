@@ -30,9 +30,17 @@ import {
 import { useState } from "react";
 import ReactPlayer from "react-player";
 import { toast } from "sonner";
+import { socket } from "@/pages/dashboard";
+import { useNavigate } from "react-router";
+
+// new page so new socket is initialized
+// import { io } from "socket.io-client";
+// import { SocketAPI } from "@/config";
+// const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export default function MusicPlayer() {
   const [play, setPlay] = useState(false);
+  const navigate = useNavigate();
 
   const handlePlay = () => {
     setPlay(!play);
@@ -41,6 +49,63 @@ export default function MusicPlayer() {
   const handlepause = () => {
     setPlay(!play);
   };
+
+  async function exitRoom() {
+    try {
+      const result: { success: boolean } = await new Promise(
+        (resolve: any, reject: any) => {
+          socket.emit(
+            "leave-room",
+            localStorage.getItem("roomId"),
+            (response: any) => {
+              if (response.success) {
+                resolve(response);
+              } else {
+                reject(new Error("failed to leave the room"));
+              }
+            }
+          );
+        }
+      );
+      if (result?.success) {
+        toast("exited from the room successfully");
+        navigate("/dashboard");
+        //alt way :  reload dashboard and remove all the localstorage
+      } else {
+        toast("Error Occured in FE");
+        navigate(`/stream/${localStorage.getItem("roomId")}`);
+      }
+    } catch (error) {
+      toast("Error Occured in server");
+      console.log("error happened", error);
+    }
+  }
+
+  socket.on("removed-from-room", () => {
+    toast(`room closed by the owner in the room id of`);
+    navigate("/dashboard");
+  });
+
+  async function deleteRoom() {
+    try {
+      await new Promise((resolve: any, reject: any) => {
+        socket.emit(
+          "remove-all-users",
+          localStorage.getItem("roomId"),
+          (response: any) => {
+            if (response.success) {
+              resolve(response);
+            } else {
+              reject(new Error("failed to leave the room"));
+            }
+          }
+        );
+      });
+    } catch (error) {
+      toast("Error Occured in server");
+      console.log("error happened", error);
+    }
+  }
 
   return (
     <div className="text-white mt-20">
@@ -69,33 +134,31 @@ export default function MusicPlayer() {
               <span>2018</span>
             </div>
             <div className="text-end">
-              {localStorage.getItem("ownerId") && (
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        {" "}
-                        <Button
-                          className="text-lg"
-                          variant={"ghost"}
-                          onClick={() => {
-                            toast("room id copied Successfully");
-                            navigator.clipboard.writeText(
-                              localStorage.getItem("roomId") || ""
-                            );
-                          }}
-                        >
-                          <Copy />
-                          {localStorage.getItem("roomId")}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Click To Copy</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              )}
+              <div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      {" "}
+                      <Button
+                        className="text-lg"
+                        variant={"ghost"}
+                        onClick={() => {
+                          toast("room id copied Successfully");
+                          navigator.clipboard.writeText(
+                            localStorage.getItem("roomId") || ""
+                          );
+                        }}
+                      >
+                        <Copy />
+                        {localStorage.getItem("roomId")}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Click To Copy</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -136,20 +199,26 @@ export default function MusicPlayer() {
                   </DialogHeader>
                 </DialogContent>
               </Dialog>
-
-              <Button
-                variant="outline"
-                className="rounded-full mr-3 pt-5 pb-5 mt-2 md:mt-0"
-              >
-                <LogOut className="w-5 h-5 " />
-                Exit Room
-              </Button>
-              {localStorage.getItem("ownerId") ? (
+              {localStorage.getItem("userType") == "audience" ? (
+                <Button
+                  variant="outline"
+                  className="rounded-full mr-3 pt-5 pb-5 mt-2 md:mt-0"
+                  onClick={exitRoom}
+                >
+                  <LogOut className="w-5 h-5 " />
+                  Exit Room
+                </Button>
+              ) : (
+                ""
+              )}
+              {localStorage.getItem("userType") != "audience" ||
+              localStorage.getItem("ownerId") ? (
                 <Dialog>
                   <DialogTrigger>
                     <Button
                       variant="destructive"
                       className="rounded-full mt-2 md:mt-0"
+                      onClick={deleteRoom}
                     >
                       <Trash className="w-5 h-5 " />
                       Delete Room

@@ -21,7 +21,7 @@ import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { SocketAPI } from "@/config";
 import { useNavigate } from "react-router";
-const socket = io(SocketAPI, { transports: ["websocket"] });
+export const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export default function Dashboard() {
   const [hoverCreate, setHoverCreate] = useState(false);
@@ -32,15 +32,26 @@ export default function Dashboard() {
   const [roomName, setRoomName] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Connected to WebSocket server");
-    });
-    // only needed when actual page
-    // return () => {
-    //   socket.off("connect");
-    // };
-  }, []);
+
+
+  // useEffect to remove all the localStorage
+  // ---------------------------------------
+
+  useEffect(()=>{
+    localStorage.removeItem("roomId");
+    localStorage.removeItem("userType");
+    localStorage.removeItem("ownerId");
+  },[])
+
+  // useEffect(() => {
+  //   socket.on("connect", () => {
+  //     console.log("Connected to WebSocket server");
+  //   });
+  //   // only needed when actual page
+  //   return () => {
+  //     socket.off("connect");
+  //   };
+  // }, []);
 
   const joinRoom = async () => {
     console.log(value);
