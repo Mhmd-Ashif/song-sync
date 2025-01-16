@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
-import { getAuth, GoogleAuthProvider, signOut } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { app } from "@/firebase";
 import { toast } from "sonner";
 import {

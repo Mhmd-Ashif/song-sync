@@ -5,7 +5,6 @@ import { Music, Headphones } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -63,7 +62,7 @@ export default function Dashboard() {
         "join-room",
         localStorage.getItem("displayName"),
         value,
-        ({ success, message, roomName, userType, roomId }: any) => {
+        ({ success, message, userType, roomId }: any) => {
           if (success) {
             localStorage.setItem("userType", userType);
             localStorage.setItem("roomId", roomId);

@@ -1,6 +1,6 @@
 import MusicPlayer from "@/components/music-player";
 import { Navbar } from "@/components/navbar";
-import { SocketAPI } from "@/config";
+// import { SocketAPI } from "@/config";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { socket } from "./dashboard";
