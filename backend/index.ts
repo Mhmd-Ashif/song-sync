@@ -109,9 +109,11 @@ io.on("connection", (socket: any) => {
       for (const socketId of room) {
         const userSocket = io.sockets.sockets.get(socketId);
         if (userSocket) {
+          // the backend will emit to front end so that all users which are connect to that
+          // room will get notified
           userSocket.emit("removed-from-room", { roomId });
-          await leaveRoom(roomId, userSocket.id); 
-          userSocket.leave(roomId); 
+          await leaveRoom(roomId, userSocket.id);
+          userSocket.leave(roomId);
         }
       }
       callback({ success: true });
@@ -124,13 +126,14 @@ io.on("connection", (socket: any) => {
 
   socket.on("disconnect", (reason: any) => {
     // manual remove thaan pola
-    // enter all room and remove the socketid from the users - tffffff
+    // enter all room and remove the socketid from the users - tffffff - not optimal
+    console.log("reload happend so disconnect happend");
+
+    
     console.log(
       `User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`
     );
-    
   });
-  
 });
 
 server.listen(PORT, async () => {
