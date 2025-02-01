@@ -66,7 +66,7 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <a href="/" className="flex items-center space-x-2">
+            <a className="flex items-center space-x-2">
               <BoltIcon className="h-6 w-6 text-white" />
               <span className="text-xl font-semibold text-white">
                 Song Sync
@@ -77,7 +77,7 @@ export function Navbar() {
             {logged ? (
               <>
                 <Sheet>
-                  <SheetTrigger asChild>
+                  <SheetTrigger asChild className="hover:cursor-pointer">
                     <Avatar>
                       <AvatarImage
                         src={`${localStorage.getItem("photoURL")}`}
