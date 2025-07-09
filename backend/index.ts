@@ -1,4 +1,4 @@
-import { addSongtoQueue } from "./functions/song";
+import { addSongtoQueue, popSongAndUpdateNext } from "./functions/song";
 import {
   addUserToRoom,
   checkRoom,
@@ -76,20 +76,44 @@ io.on("connection", (socket: any) => {
     }
   });
 
+  // songs socket routes fr
   socket.on("add-song", async ({ roomId, ytData }: any, callback: any) => {
     if (!roomId || !ytData) {
       console.error("Missing roomId or song:", { roomId, ytData });
       return;
     }
 
-    const val = await addSongtoQueue(roomId, ytData);
+    const { val, songToStore }: any = await addSongtoQueue(roomId, ytData);
     if (val) {
       callback({ success: true, msg: "Song Added into the list" });
-      io.to(roomId).emit("queue-updated", { ytData });
+
+      io.to(roomId).emit("update-induvidual", { song: { ...songToStore } });
     } else {
       callback({ success: true, msg: "Song Already Exist" });
     }
   });
+
+  socket.on("play-next", async (roomId: string) => {
+    const result = await popSongAndUpdateNext(roomId);
+
+    if (!result) return;
+
+    const { nowPlaying } = result;
+
+    // Get updated songs list (excluding nowPlaying)
+    const rawSongs = await client.lRange(`room:${roomId}:songs`, 0, -1);
+    const remainingSongs = rawSongs
+      .map((s) => JSON.parse(s))
+      .filter((s) => !s.playing);
+
+    // Broadcast to everyone in the room
+    io.to(roomId).emit("queue-updated", {
+      parsedSongs: remainingSongs,
+      nowPlaying,
+    });
+  });
+
+  
 
   // joining a room
   socket.on(
@@ -97,8 +121,12 @@ io.on("connection", (socket: any) => {
     async (displayName: string, roomId: string, callback: any) => {
       // same do it in the redis add user to room
       // bug found first check the room exist -> then do socket.join(roomId)
-      const result = await addUserToRoom(roomId, displayName, socket.id);
-      if (result) {
+      const { val, songs, nowPlaying }: any = await addUserToRoom(
+        roomId,
+        displayName,
+        socket.id
+      );
+      if (val) {
         socket.join(roomId);
 
         console.log(`${displayName} join with the room id of ${roomId}`);
@@ -107,6 +135,11 @@ io.on("connection", (socket: any) => {
           roomId,
           userType: "audience",
           message: "Successfully Joined into the Room",
+        });
+
+        io.to(roomId).emit("queue-updated", {
+          parsedSongs: songs,
+          nowPlaying: nowPlaying,
         });
       } else {
         callback({ success: false, message: "room doesn't exist" });
@@ -150,16 +183,25 @@ io.on("connection", (socket: any) => {
     // manual remove thaan pola
     // enter all room and remove the socketid from the users - tffffff - not optimal
     console.log("reload happend so disconnect happend");
-
     console.log(
       `User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`
     );
   });
 });
 
+// redis is becoming inactive after 15dys so hitting every 8 mins
+// setInterval(async () => {
+//   try {
+//     const pong = await client.ping();
+//     console.log("Redis ping:", pong);
+//   } catch (err: any) {
+//     console.error("Ping failed", err.message);
+//   }
+// }, 8 * 60 * 1000);
+
 server.listen(PORT, async () => {
   client.on("error", (err) => console.log("Redis Client Error", err));
-  // await client.connect();
+  await client.connect();
   console.log("redis connected successfully");
   console.log("App is Running in port" + PORT);
 });

@@ -10,10 +10,34 @@ export async function addSongtoQueue(roomId: string, song: any) {
   });
 
   if (!isDuplicate) {
-    await client.lPush(`room:${roomId}:songs`, JSON.stringify(song));
-    console.log(`Song added to room ${roomId}:`, song);
-    return true;
+    const isFirst = currentSongs.length === 0;
+    const songToStore = {
+      ...song,
+      playing: isFirst ? true : false,
+    };
+    await client.rPush(`room:${roomId}:songs`, JSON.stringify(songToStore));
+    return { val: true, songToStore };
   } else {
-    return false;
+    return { val: false };
   }
 }
+
+export async function popSongAndUpdateNext(roomId: string) {
+  const songKey = `room:${roomId}:songs`;
+
+  const poppedSongRaw = await client.lPop(songKey);
+
+  if (!poppedSongRaw) return null;
+
+  const nextSongRaw = await client.lIndex(songKey, 0);
+
+  if (nextSongRaw) {
+    const parsed = JSON.parse(nextSongRaw);
+    const updated = { ...parsed, playing: true };
+    await client.lSet(songKey, 0, JSON.stringify(updated));
+    return { popped: JSON.parse(poppedSongRaw), nowPlaying: updated };
+  }
+
+  return { popped: JSON.parse(poppedSongRaw), nowPlaying: null };
+}
+

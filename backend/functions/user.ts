@@ -1,7 +1,7 @@
 import { json } from "stream/consumers";
 import { client } from "../redis";
 
-// chumma - testing purpose
+//testing purpose
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const createRoom = async (
@@ -25,23 +25,37 @@ export const createRoom = async (
 };
 
 export const addUserToRoom = async (
-  roomId: any,
+  roomId: string,
   displayName: string,
-  socketId: any
+  socketId: string
 ) => {
   try {
     const roomKey = `room:${roomId}`;
+
     const allUsers = await client.hGet(roomKey, "users");
     let users: any[] = [];
+
     if (allUsers) {
       users = JSON.parse(allUsers);
     }
+
     users.push({ displayName, socketId });
+
     await client.hSet(roomKey, "users", JSON.stringify(users));
-    return true;
+    const rawSongs = await client.lRange(`room:${roomId}:songs`, 0, -1);
+    const parsedSongs = rawSongs.map((s) => JSON.parse(s));
+    const nowPlaying = parsedSongs.find((s) => s.playing === true);
+    const songs = parsedSongs
+      .filter((s) => !s.playing)
+      .map((song) => ({
+        ...song,
+        duration: `${song.min}:${song.sec}`,
+      }));
+
+    return { val: true, songs, nowPlaying };
   } catch (error) {
     console.error("Error adding user to room:", error);
-    return false;
+    return { val: false };
   }
 };
 
