@@ -22,6 +22,8 @@ import {
   Trash,
   Copy,
   Loader,
+  StepForward,
+  SkipForward,
 } from "lucide-react";
 import {
   Tooltip,
@@ -30,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactPlayer from "react-player";
 import { toast } from "sonner";
 import { socket } from "@/pages/dashboard";
@@ -53,6 +55,8 @@ export default function MusicPlayer() {
   const [triggerDiv2, setTriggerDiv2] = useState(false);
   const [ytData, setYtData] = useState<any>({});
   const navigate = useNavigate();
+  const [allSongs, setAllSongs] = useState<any>([]);
+  const [playing, setPlaying] = useState<any>();
 
   const handlePlay = () => {
     setPlay(true);
@@ -60,6 +64,12 @@ export default function MusicPlayer() {
 
   const handlePause = () => {
     setPlay(false);
+  };
+
+  const handlePlayNext = () => {
+    const roomId = localStorage.getItem("roomId");
+    console.log(roomId);
+    socket.emit("play-next", roomId);
   };
 
   async function exitRoom() {
@@ -138,7 +148,7 @@ export default function MusicPlayer() {
       const thumbnailImg = response.data.thumbnails.filter(
         (t: any) => t.width == 320 && t.height == 180
       );
-      // console.log(response.data);
+      console.log(response.data);
       const min = new Date(response.data.lengthSeconds * 1000).getUTCMinutes();
       const sec = new Date(response.data.lengthSeconds * 1000).getUTCSeconds();
       setYtData({
@@ -148,6 +158,7 @@ export default function MusicPlayer() {
         thumbnailImg,
         min,
         sec,
+        publishedDate: response.data.publishedDate,
       });
       console.log("this is url");
       console.log(ytUrl);
@@ -184,10 +195,55 @@ export default function MusicPlayer() {
     }
   }
 
-  socket.on("queue-updated", () => {
-    // toast(song);
-    console.log("New song added");
-  });
+  useEffect(() => {
+    const handleQueueUpdated = ({ parsedSongs, nowPlaying }: any) => {
+      console.log("Queue received:", parsedSongs);
+      console.log("Now playing:", nowPlaying);
+
+      setAllSongs(
+        parsedSongs.map((song: any) => ({
+          ...song,
+          duration: `${song.min}:${song.sec}`,
+        }))
+      );
+
+      if (nowPlaying) {
+        setPlaying(nowPlaying);
+        console.log(play);
+        setPlay(true);
+      }
+    };
+
+    socket.on("queue-updated", handleQueueUpdated);
+
+    return () => {
+      socket.off("queue-updated", handleQueueUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateList = ({ song }: any) => {
+      console.log("this is induvidual", song);
+      if (song.playing) {
+        setPlaying(song);
+        setPlay(true);
+      } else {
+        setAllSongs((prevSongs: any) => [
+          ...prevSongs,
+          {
+            ...song,
+            duration: `${song.min}:${song.sec}`,
+          },
+        ]);
+      }
+    };
+
+    socket.on("update-induvidual", updateList);
+
+    return () => {
+      socket.off("update-induvidual", updateList);
+    };
+  }, []);
 
   return (
     <div className="text-white mt-20">
@@ -206,21 +262,25 @@ export default function MusicPlayer() {
               playing={play}
             /> */}
             <div style={{ position: "relative" }}>
-              <ReactPlayer
-                url="https://www.youtube.com/watch?v=FXiaIH49oAU"
-                controls={false}
-                config={{
-                  file: {
-                    attributes: {
-                      controlsList: "nodownload nofullscreen noplaybackrate",
-                      disablePictureInPicture: true,
+              {playing ? (
+                <ReactPlayer
+                  url={playing.url}
+                  controls={false}
+                  config={{
+                    file: {
+                      attributes: {
+                        controlsList: "nodownload nofullscreen noplaybackrate",
+                        disablePictureInPicture: true,
+                      },
                     },
-                  },
-                }}
-                width="100%"
-                height="100%"
-                playing={play}
-              />
+                  }}
+                  width="100%"
+                  height="100%"
+                  playing={play}
+                />
+              ) : (
+                "no player"
+              )}
               {/* Overlay div to block interactions */}
               {/* Transparent overlay to block play/pause */}
               <div
@@ -238,12 +298,12 @@ export default function MusicPlayer() {
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl md:text-5xl font-bold leading-tight">
-              Chekka Chivantha Vaanam (Original Motion Picture Soundtrack)
+              {playing ? playing.title : "no title"}
             </h1>
             <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span className="font-medium text-white">A.R. Rahman</span>
-              <span>•</span>
-              <span>2018</span>
+              <span>{`Date of Upload : ${
+                playing ? playing.publishedDate : "no date"
+              }`}</span>
             </div>
             <div className="text-end">
               <div>
@@ -276,18 +336,33 @@ export default function MusicPlayer() {
         </CardHeader>
         <CardContent>
           <div className="md:flex items-center gap-4 mb-8">
-            <div className="flex gap-4 ">
-              <Button size="icon" className="rounded-full" onClick={handlePlay}>
-                <Play className="w-5 h-5" />
-              </Button>
-              <Button
-                size="icon"
-                className="rounded-full"
-                onClick={handlePause}
-              >
-                <Pause className="w-5 h-5" />
-              </Button>
-            </div>
+            {localStorage.getItem("ownerId") && (
+              <div className="flex gap-4 ">
+                <>
+                  <Button
+                    size="icon"
+                    className="rounded-full"
+                    onClick={handlePlay}
+                  >
+                    <Play className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    className="rounded-full"
+                    onClick={handlePause}
+                  >
+                    <Pause className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    className="rounded-full"
+                    onClick={handlePlayNext}
+                  >
+                    <SkipForward className="w-5 h-5" />
+                  </Button>
+                </>
+              </div>
+            )}
             <div className="ml-auto mt-6 md:mt-0 ">
               <Dialog open={triggerDiv}>
                 <DialogTrigger>
@@ -436,50 +511,7 @@ export default function MusicPlayer() {
 
           <div className="space-y-2">
             {/* Song List */}
-            {[
-              {
-                title: "Bhoomi Bhoomi",
-                artist: "A.R. Rahman, Shakthisree Gopalan",
-                plays: "5,658,086",
-                duration: "4:37",
-              },
-              {
-                title: "Mazhai Kuruvi",
-                artist: "A.R. Rahman",
-                plays: "41,200,936",
-                duration: "5:48",
-              },
-              {
-                title: "Hayati",
-                artist: "A.R. Rahman, Ar Ameen",
-                plays: "3,245,789",
-                duration: "4:52",
-              },
-              {
-                title: "Kalla Kalavaani",
-                artist: "A.R. Rahman, Aravind Srinivas, Aparna Narayanan",
-                plays: "2,987,654",
-                duration: "3:59",
-              },
-              {
-                title: "Sevandhu Pochu Nenju",
-                artist: "A.R. Rahman, Shakthisree Gopalan",
-                plays: "4,567,890",
-                duration: "5:12",
-              },
-              {
-                title: "Naan Yen",
-                artist: "A.R. Rahman, Karthik",
-                plays: "3,876,543",
-                duration: "4:45",
-              },
-              {
-                title: "Chekka Chivantha Vaanam",
-                artist: "A.R. Rahman",
-                plays: "2,345,678",
-                duration: "4:17",
-              },
-            ].map((song, index) => (
+            {allSongs.map((song: any, index: number) => (
               <div
                 key={index}
                 className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-2 rounded-md hover:bg-white/10"
@@ -487,22 +519,27 @@ export default function MusicPlayer() {
                 <div className="font-medium">{index + 1}</div>
                 <div>
                   <div className="font-medium">{song.title}</div>
-                  <div className="text-sm text-gray-400">{song.artist}</div>
+                  <div className="text-sm text-gray-400">
+                    {song.publishedDate}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <Button
                     size="sm"
                     variant="link"
-                    className="rounded-full"
+                    className="rounded-full hover:bg-gray-500"
                     onClick={() => {
                       console.log("upvoted");
+                      console.log(song);
                     }}
                   >
-                    <CircleArrowUp className="w-8. h-8" />
+                    <CircleArrowUp className="w-8. h-8 " />
                   </Button>
 
-                  <span className="text-sm text-gray-400">{song.duration}</span>
+                  <span className="text-sm text-gray-400 w-10">
+                    {song.duration}
+                  </span>
                 </div>
               </div>
             ))}
