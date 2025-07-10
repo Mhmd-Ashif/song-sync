@@ -1,3 +1,3 @@
 export const ServerAPI = "http://localhost:3000/api";
 export const SocketAPI = "ws://localhost:3000";
-export const RapidAPIKey = "a1a402d18amsh0a1153423d70d9dp155147jsn7009df1cdc82";
+export const RapidAPIKey = "041a6908a9mshe6b4ed8275e9d07p151b0fjsne53980e58fe7";

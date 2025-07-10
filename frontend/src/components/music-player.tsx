@@ -32,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactPlayer from "react-player";
 import { toast } from "sonner";
 import { socket } from "@/pages/dashboard";
@@ -57,20 +57,107 @@ export default function MusicPlayer() {
   const navigate = useNavigate();
   const [allSongs, setAllSongs] = useState<any>([]);
   const [playing, setPlaying] = useState<any>();
+  const [playedSeconds, setPlayedSeconds] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const [seekTo, setSeekTo] = useState<number | null>(null);
+  //
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  const [forceSeek, setForceSeek] = useState<number | null>(null);
+
+  const playerRef = useRef<ReactPlayer>(null);
 
   const handlePlay = () => {
     setPlay(true);
+    if (localStorage.getItem("userType") === "creator") {
+      socket.emit("broadcast-sync", {
+        roomId: localStorage.getItem("roomId"),
+        time: playedSeconds,
+        isPlaying: true,
+        currentSong: playing,
+      });
+    }
   };
 
   const handlePause = () => {
     setPlay(false);
+    if (localStorage.getItem("userType") === "creator") {
+      socket.emit("broadcast-sync", {
+        roomId: localStorage.getItem("roomId"),
+        time: playedSeconds,
+        isPlaying: false,
+        currentSong: playing,
+      });
+    }
   };
 
   const handlePlayNext = () => {
     const roomId = localStorage.getItem("roomId");
     console.log(roomId);
-    socket.emit("play-next", roomId);
+    if (localStorage.getItem("userType") === "creator" && allSongs.length > 0) {
+      socket.emit("play-next", roomId);
+    }
   };
+
+  useEffect(() => {
+    if (localStorage.getItem("userType") === "audience") {
+      socket.emit("request-initial-sync", localStorage.getItem("roomId"));
+
+      socket.on(
+        "initial-sync",
+        ({
+          time,
+          isPlaying,
+          currentSong,
+        }: {
+          time: number;
+          isPlaying: boolean;
+          currentSong?: any;
+        }) => {
+          if (playerRef.current) {
+            playerRef.current.seekTo(time, "seconds");
+            setPlayedSeconds(time);
+          }
+          if (currentSong) {
+            setPlaying(currentSong);
+          }
+          setPlayedSeconds(time);
+          setForceSeek(time);
+          setPlay(isPlaying);
+
+          setTimeout(() => {
+            setPlayedSeconds(time);
+          }, 100);
+          console.log("Initial sync complete:", { time, isPlaying });
+        }
+      );
+
+      socket.on(
+        "receive-sync",
+        ({ time, isPlaying }: { time: number; isPlaying: boolean }) => {
+          if (Math.abs(time - playedSeconds) > 1) {
+            setPlayedSeconds(time);
+          }
+
+          setPlay(isPlaying);
+        }
+      );
+    }
+
+    return () => {
+      socket.off("initial-sync");
+      socket.off("receive-sync");
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("not ready");
+    console.log(forceSeek);
+    console.log(playedSeconds);
+    console.log(play);
+  }, [isReady, forceSeek]);
 
   async function exitRoom() {
     try {
@@ -92,7 +179,6 @@ export default function MusicPlayer() {
       if (result?.success) {
         toast("exited from the room successfully");
         navigate("/dashboard");
-        //alt way :  reload dashboard and remove all the localstorage
       } else {
         toast("Error Occured in FE");
         navigate(`/stream/${localStorage.getItem("roomId")}`);
@@ -117,6 +203,7 @@ export default function MusicPlayer() {
           (response: any) => {
             if (response.success) {
               resolve(response);
+              navigate("/dashboard");
             } else {
               reject(new Error("failed to leave the room"));
             }
@@ -209,8 +296,8 @@ export default function MusicPlayer() {
 
       if (nowPlaying) {
         setPlaying(nowPlaying);
-        console.log(play);
-        setPlay(true);
+        // console.log(play);
+        // setPlay(true);
       }
     };
 
@@ -253,18 +340,11 @@ export default function MusicPlayer() {
       <div className="w-full text-white border-none">
         <CardHeader className="flex flex-col md:flex-row gap-6">
           <div className="rounded-md overflow-hidden">
-            {/* <ReactPlayer
-              url="https://www.youtube.com/watch?v=FXiaIH49oAU"
-              controls={false}
-              height={"100%"}
-              width={"100%"}
-              onPause={handlepause}
-              playing={play}
-            /> */}
             <div style={{ position: "relative" }}>
               {playing ? (
                 <ReactPlayer
-                  url={playing.url}
+                  url={playing?.url}
+                  ref={playerRef}
                   controls={false}
                   config={{
                     file: {
@@ -277,12 +357,34 @@ export default function MusicPlayer() {
                   width="100%"
                   height="100%"
                   playing={play}
+                  onReady={() => {
+                    if (localStorage.getItem("userType") === "audience") {
+                      socket.emit(
+                        "request-initial-sync",
+                        localStorage.getItem("roomId")
+                      );
+                    }
+                  }}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
+                  onEnded={handlePlayNext} 
+                  played={forceSeek}
+                  onProgress={({ playedSeconds }) => {
+                    setPlayedSeconds(playedSeconds);
+                    if (localStorage.getItem("userType") === "creator") {
+                      socket.emit("broadcast-sync", {
+                        roomId: localStorage.getItem("roomId"),
+                        time: playedSeconds,
+                        isPlaying: play,
+                        currentSong: playing,
+                      });
+                    }
+                  }}
+                  progressInterval={100} 
                 />
               ) : (
-                "no player"
+                ""
               )}
-              {/* Overlay div to block interactions */}
-              {/* Transparent overlay to block play/pause */}
               <div
                 style={{
                   position: "absolute",
@@ -298,14 +400,16 @@ export default function MusicPlayer() {
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl md:text-5xl font-bold leading-tight">
-              {playing ? playing.title : "no title"}
+              {playing ? playing.title : "There Are No Songs Playing Currently"}
             </h1>
             <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span>{`Date of Upload : ${
-                playing ? playing.publishedDate : "no date"
-              }`}</span>
+              <span>
+                {playing
+                  ? `Date of Upload : ${playing.publishedDate}`
+                  : "Try Adding Songs via Add Song Button Below"}
+              </span>
             </div>
-            <div className="text-end">
+            <div className="text-end md:text-start">
               <div>
                 <TooltipProvider>
                   <Tooltip>
@@ -357,13 +461,18 @@ export default function MusicPlayer() {
                     size="icon"
                     className="rounded-full"
                     onClick={handlePlayNext}
+                    disabled={!play}
                   >
                     <SkipForward className="w-5 h-5" />
                   </Button>
                 </>
               </div>
             )}
-            <div className="ml-auto mt-6 md:mt-0 ">
+            <div
+              className={`ml-auto ${
+                localStorage.getItem("userType") == "creator" && "mt-6"
+              } md:mt-0 `}
+            >
               <Dialog open={triggerDiv}>
                 <DialogTrigger>
                   <Button
@@ -511,38 +620,32 @@ export default function MusicPlayer() {
 
           <div className="space-y-2">
             {/* Song List */}
-            {allSongs.map((song: any, index: number) => (
-              <div
-                key={index}
-                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-2 rounded-md hover:bg-white/10"
-              >
-                <div className="font-medium">{index + 1}</div>
-                <div>
-                  <div className="font-medium">{song.title}</div>
-                  <div className="text-sm text-gray-400">
-                    {song.publishedDate}
+            {allSongs.length > 0 ? (
+              allSongs.map((song: any, index: number) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-2 rounded-md hover:bg-white/10"
+                >
+                  <div className="font-medium">{index + 1}</div>
+                  <div>
+                    <div className="font-medium">{song.title}</div>
+                    <div className="text-sm text-gray-400">
+                      {song.publishedDate}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-400 w-10">
+                      {song.duration}
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    className="rounded-full hover:bg-gray-500"
-                    onClick={() => {
-                      console.log("upvoted");
-                      console.log(song);
-                    }}
-                  >
-                    <CircleArrowUp className="w-8. h-8 " />
-                  </Button>
-
-                  <span className="text-sm text-gray-400 w-10">
-                    {song.duration}
-                  </span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center font-semibold">
+                No Songs in the queue
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </div>
