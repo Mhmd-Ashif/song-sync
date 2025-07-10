@@ -24,8 +24,6 @@ const server = http.createServer(app);
 
 const io = socketIo(server);
 
-// we want to create a redis queue with an room thingyy
-let rooms: any = [];
 
 app.use("/api/user", UserRouter);
 
@@ -33,7 +31,13 @@ app.get("/", (req: any, res: any) => {
   res.json("hi there");
 });
 
-// socket codeingz
+interface RoomState {
+  time: number;
+  isPlaying: boolean;
+  currentSong?: any;
+}
+
+const roomStates: Record<string, RoomState> = {};
 
 io.on("connection", (socket: any) => {
   socket.on(
@@ -93,34 +97,69 @@ io.on("connection", (socket: any) => {
     }
   });
 
+  socket.on(
+    "broadcast-sync",
+    ({
+      roomId,
+      time,
+      isPlaying,
+      currentSong,
+    }: {
+      roomId: string;
+      time: number;
+      isPlaying: boolean;
+      currentSong?: any;
+    }) => {
+      roomStates[roomId] = { time, isPlaying, currentSong };
+
+      socket.to(roomId).emit("receive-sync", { time, isPlaying });
+    }
+  );
+
+  socket.on("request-initial-sync", (roomId: string) => {
+    const state = roomStates[roomId];
+    if (state) {
+      socket.emit("initial-sync", state);
+    }
+  });
+
+
   socket.on("play-next", async (roomId: string) => {
     const result = await popSongAndUpdateNext(roomId);
-
     if (!result) return;
 
     const { nowPlaying } = result;
-
-    // Get updated songs list (excluding nowPlaying)
     const rawSongs = await client.lRange(`room:${roomId}:songs`, 0, -1);
     const remainingSongs = rawSongs
       .map((s) => JSON.parse(s))
       .filter((s) => !s.playing);
 
-    // Broadcast to everyone in the room
+    if (nowPlaying) {
+      roomStates[roomId] = {
+        time: 0, 
+        isPlaying: true, 
+        currentSong: nowPlaying,
+      };
+    }
+
     io.to(roomId).emit("queue-updated", {
       parsedSongs: remainingSongs,
       nowPlaying,
     });
+
+
+    setTimeout(() => {
+      io.to(roomId).emit("initial-sync", {
+        time: 0, 
+        isPlaying: true, 
+        currentSong: nowPlaying,
+      });
+    }, 500);
   });
 
-  
-
-  // joining a room
   socket.on(
     "join-room",
     async (displayName: string, roomId: string, callback: any) => {
-      // same do it in the redis add user to room
-      // bug found first check the room exist -> then do socket.join(roomId)
       const { val, songs, nowPlaying }: any = await addUserToRoom(
         roomId,
         displayName,
