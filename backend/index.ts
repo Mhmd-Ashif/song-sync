@@ -11,7 +11,7 @@ const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const { v4: uuidv4 } = require("uuid");
-const UserRouter = require("./routes/userRoute.ts");
+const UserRouter = require("./routes/userRoute");
 const app = express();
 const PORT = 3000;
 const socketIo = require("socket.io");
@@ -21,7 +21,6 @@ app.use(express.json());
 const server = http.createServer(app);
 
 const io = socketIo(server);
-
 
 app.use("/api/user", UserRouter);
 
@@ -120,7 +119,6 @@ io.on("connection", (socket: any) => {
     }
   });
 
-
   socket.on("play-next", async (roomId: string) => {
     const result = await popSongAndUpdateNext(roomId);
     if (!result) return;
@@ -133,8 +131,8 @@ io.on("connection", (socket: any) => {
 
     if (nowPlaying) {
       roomStates[roomId] = {
-        time: 0, 
-        isPlaying: true, 
+        time: 0,
+        isPlaying: true,
         currentSong: nowPlaying,
       };
     }
@@ -144,11 +142,10 @@ io.on("connection", (socket: any) => {
       nowPlaying,
     });
 
-
     setTimeout(() => {
       io.to(roomId).emit("initial-sync", {
-        time: 0, 
-        isPlaying: true, 
+        time: 0,
+        isPlaying: true,
         currentSong: nowPlaying,
       });
     }, 500);
@@ -183,7 +180,6 @@ io.on("connection", (socket: any) => {
     }
   );
 
-
   socket.on("leave-room", async (roomId: string, callback: any) => {
     const result = await leaveRoom(roomId, socket.id);
     callback({ success: true });
@@ -197,7 +193,6 @@ io.on("connection", (socket: any) => {
       for (const socketId of room) {
         const userSocket = io.sockets.sockets.get(socketId);
         if (userSocket) {
-
           userSocket.emit("removed-from-room", { roomId });
           userSocket.leave(roomId);
         }
