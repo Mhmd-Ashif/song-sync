@@ -22,8 +22,10 @@ const socketIo = require("socket.io");
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app/"],
+    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -33,7 +35,14 @@ app.options("*", cors());
 
 const server = http.createServer(app);
 
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  transports: ["websocket", "polling"], // Explicitly set transports
+});
 
 app.use("/api/user", UserRouter);
 
@@ -224,6 +233,10 @@ io.on("connection", (socket: any) => {
       `User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`
     );
   });
+
+  socket.on("error", (err: any) => {
+    console.error(`Socket error: ${err.message}`);
+  });
 });
 
 setInterval(async () => {
@@ -235,9 +248,7 @@ setInterval(async () => {
   }
 }, 8 * 60 * 1000);
 
-server.listen(PORT, async () => {
-  client.on("error", (err) => console.log("Redis Client Error", err));
+server.listen(PORT, "0.0.0.0", async () => {
   await client.connect();
-  console.log("redis connected successfully");
-  console.log("App is Running in port" + PORT);
+  console.log(`Server running on ${PORT}`);
 });

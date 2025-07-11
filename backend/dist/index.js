@@ -26,13 +26,22 @@ const PORT = process.env.PORT || 3000;
 const socketIo = require("socket.io");
 // app.use(cors());
 app.use(cors({
-    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app/"],
+    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(express.json());
 app.options("*", cors());
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+    cors: {
+        origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app"],
+        methods: ["GET", "POST"],
+        credentials: true,
+    },
+    transports: ["websocket", "polling"], // Explicitly set transports
+});
 app.use("/api/user", userRoute_1.default);
 app.get("/", (req, res) => {
     res.json("hi there");
@@ -173,6 +182,9 @@ io.on("connection", (socket) => {
         console.log("reload happend so disconnect happend");
         console.log(`User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
     });
+    socket.on("error", (err) => {
+        console.error(`Socket error: ${err.message}`);
+    });
 });
 setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -183,9 +195,7 @@ setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
         console.error("Ping failed", err.message);
     }
 }), 8 * 60 * 1000);
-server.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
-    redis_1.client.on("error", (err) => console.log("Redis Client Error", err));
+server.listen(PORT, "0.0.0.0", () => __awaiter(void 0, void 0, void 0, function* () {
     yield redis_1.client.connect();
-    console.log("redis connected successfully");
-    console.log("App is Running in port" + PORT);
+    console.log(`Server running on ${PORT}`);
 }));
