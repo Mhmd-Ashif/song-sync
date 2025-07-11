@@ -210,6 +210,7 @@ export default function Dashboard() {
                     <InputOTP
                       maxLength={6}
                       value={value}
+                      inputMode="text"
                       onChange={(value) => setValue(value)}
                     >
                       <InputOTPGroup>
