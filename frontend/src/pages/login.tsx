@@ -8,7 +8,6 @@ import {
 import { app } from "../firebase";
 import { useState } from "react";
 import axios from "axios";
-import { ServerAPI } from "../config";
 
 export default function Login() {
   const provider = new GoogleAuthProvider();
@@ -48,9 +47,12 @@ export default function Login() {
   async function validateUid() {
     const idToken = localStorage.getItem("idToken");
     try {
-      const result = await axios.post(`${ServerAPI}/verified`, {
-        idToken: idToken,
-      });
+      const result = await axios.post(
+        `${import.meta.env.VITE_ServerAPI}/verified`,
+        {
+          idToken: idToken,
+        }
+      );
       const data = await result.data;
       console.log(data);
     } catch (error) {

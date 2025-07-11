@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -13,16 +12,11 @@ import {
 import {
   Play,
   Pause,
-  HeadphoneOff,
-  Headphones,
-  CircleStop,
   LogOut,
-  CircleArrowUp,
   Plus,
   Trash,
   Copy,
   Loader,
-  StepForward,
   SkipForward,
 } from "lucide-react";
 import {
@@ -39,13 +33,8 @@ import { socket } from "@/pages/dashboard";
 import { useNavigate } from "react-router";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
-import { RapidAPIKey } from "@/config";
 import axios from "axios";
 import "./music-player.css";
-// new page so new socket is initialized
-// import { io } from "socket.io-client";
-// import { SocketAPI } from "@/config";
-// const socket = io(SocketAPI, { transports: ["websocket"] });
 
 export default function MusicPlayer() {
   const [play, setPlay] = useState(false);
@@ -58,12 +47,6 @@ export default function MusicPlayer() {
   const [allSongs, setAllSongs] = useState<any>([]);
   const [playing, setPlaying] = useState<any>();
   const [playedSeconds, setPlayedSeconds] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isReady, setIsReady] = useState(false);
-  const [seekTo, setSeekTo] = useState<number | null>(null);
-  //
-  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const [forceSeek, setForceSeek] = useState<number | null>(null);
 
@@ -152,12 +135,6 @@ export default function MusicPlayer() {
     };
   }, []);
 
-  useEffect(() => {
-    console.log("not ready");
-    console.log(forceSeek);
-    console.log(playedSeconds);
-    console.log(play);
-  }, [isReady, forceSeek]);
 
   async function exitRoom() {
     try {
@@ -180,8 +157,9 @@ export default function MusicPlayer() {
         toast("exited from the room successfully");
         navigate("/dashboard");
       } else {
-        toast("Error Occured in FE");
+        toast("Error Occured in server");
         navigate(`/stream/${localStorage.getItem("roomId")}`);
+        navigate("/dashboard");
       }
     } catch (error) {
       toast("Error Occured in server");
@@ -227,7 +205,7 @@ export default function MusicPlayer() {
         id: ytUrl,
       },
       headers: {
-        "x-rapidapi-key": RapidAPIKey,
+        "x-rapidapi-key": `${import.meta.env.VITE_RapidAPIKey}`,
       },
     };
     try {
@@ -255,6 +233,7 @@ export default function MusicPlayer() {
       setTriggerDiv2(true);
     } catch (error) {
       isLoading(false);
+      console.log(error)
       toast("Please Enter the Valid Youtube Url video or Try again sometimes");
     }
   }
@@ -367,7 +346,7 @@ export default function MusicPlayer() {
                   }}
                   onPlay={handlePlay}
                   onPause={handlePause}
-                  onEnded={handlePlayNext} 
+                  onEnded={handlePlayNext}
                   played={forceSeek}
                   onProgress={({ playedSeconds }) => {
                     setPlayedSeconds(playedSeconds);
@@ -380,7 +359,7 @@ export default function MusicPlayer() {
                       });
                     }
                   }}
-                  progressInterval={100} 
+                  progressInterval={100}
                 />
               ) : (
                 ""
@@ -416,7 +395,7 @@ export default function MusicPlayer() {
                     <TooltipTrigger>
                       {" "}
                       <Button
-                        className="text-lg"
+                        className="text-lg "
                         variant={"ghost"}
                         onClick={() => {
                           toast("room id copied Successfully");

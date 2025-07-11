@@ -18,9 +18,10 @@ import loadingToast from "@/components/loading-toast";
 import { Input } from "@/components/ui/input";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
-import { SocketAPI } from "@/config";
 import { useNavigate } from "react-router";
-export const socket = io(SocketAPI, { transports: ["websocket"] });
+export const socket = io(import.meta.env.VITE_SocketAPI, {
+  transports: ["websocket"],
+});
 
 export default function Dashboard() {
   const [hoverCreate, setHoverCreate] = useState(false);
@@ -31,32 +32,15 @@ export default function Dashboard() {
   const [roomName, setRoomName] = useState("");
   const navigate = useNavigate();
 
-
-
-  // useEffect to remove all the localStorage
-  // ---------------------------------------
-
-  useEffect(()=>{
+  useEffect(() => {
     localStorage.removeItem("roomId");
     localStorage.removeItem("userType");
     localStorage.removeItem("ownerId");
-  },[])
+  }, []);
 
-  // useEffect(() => {
-  //   socket.on("connect", () => {
-  //     console.log("Connected to WebSocket server");
-  //   });
-  //   // only needed when actual page
-  //   return () => {
-  //     socket.off("connect");
-  //   };
-  // }, []);
 
   const joinRoom = async () => {
     console.log(value);
-    // validate the room id exist
-    // join into the websocket room
-    // redirect to /joinroom:roomId page
     if (!(value.length < 6)) {
       socket.emit(
         "join-room",
@@ -67,7 +51,6 @@ export default function Dashboard() {
             localStorage.setItem("userType", userType);
             localStorage.setItem("roomId", roomId);
             toast(message);
-            // see if room exist or not then move the user
             navigate(`/stream/${roomId}`);
           } else {
             toast(message);
@@ -82,9 +65,6 @@ export default function Dashboard() {
   const createRoom = async () => {
     loadingToast("Creating Room Please Wait ...");
     console.log(roomName);
-    // send backend request to create an redis queue with random number and a given name then
-    // create a websocket room
-    // once it done all then redirect to /creator:roomId page with hashed token it has creator in it
     if (roomName.trim() !== "") {
       socket.emit(
         "create-room",
@@ -114,7 +94,6 @@ export default function Dashboard() {
         <div className="absolute bottom-1/4 left-1/3 w-1/2 h-1/2 bg-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
       <div className="relative z-10">
-        {/* need to del */}
         <div className="container mx-auto px-4 py-8 mt-16 ">
           <h1 className="text-4xl font-bold mb-2 text-center text-white">
             Welcome Dashboard
@@ -146,9 +125,9 @@ export default function Dashboard() {
                 and create a unique listening experience for others.
               </p>
               <ul className="list-disc list-inside mb-6 text-violet-200">
-                <li>Choose your playlist</li>
-                <li>Set room preferences</li>
+                <li>Choose your Youtube Song</li>
                 <li>Invite friends to join</li>
+                <li>Use Multiple option</li>
               </ul>
               <Dialog>
                 <DialogTrigger asChild>
@@ -210,8 +189,8 @@ export default function Dashboard() {
               </p>
               <ul className="list-disc list-inside mb-6 text-violet-200">
                 <li>Browse active rooms</li>
-                <li>Upvote your favorite songs</li>
                 <li>Add songs to the queue</li>
+                <li>Get realtime Sync with creator</li>
               </ul>
               <Dialog>
                 <DialogTrigger>

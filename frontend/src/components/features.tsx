@@ -1,4 +1,9 @@
-import { Users, PlayCircle, ThumbsUp, MessageCircle } from "lucide-react";
+import {
+  Users,
+  PlayCircle,
+  ThumbsUp,
+  Fingerprint,
+} from "lucide-react";
 import { useState } from "react";
 import { InView } from "react-intersection-observer";
 
@@ -16,15 +21,16 @@ const features = [
     icon: PlayCircle,
   },
   {
-    name: "Upvote Tracks",
-    description: "Vote for your favorite songs to decide what plays next.",
+    name: "Real Time Sync",
+    description:
+      "Sync Video Between the Users without much latency and high load",
     icon: ThumbsUp,
   },
   {
-    name: "Real-Time Chat",
+    name: "Secure Login Via OAuth",
     description:
-      "Chat live with others in the room and share your thoughts on the music.",
-    icon: MessageCircle,
+      "No data will be stored or seen though it is complete managed by Google",
+    icon: Fingerprint,
   },
 ];
 
@@ -48,7 +54,7 @@ export function Features() {
 
         <div className="mx-auto mt-12  max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none mb-5 sm:mb-0">
           <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-4">
-            {features.map((feature, index) => (
+            {features.map((feature:any, index:any) => (
               <FeatureItem key={feature.name} index={index} feature={feature} />
             ))}
           </dl>

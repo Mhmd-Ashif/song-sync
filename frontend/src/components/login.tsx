@@ -4,7 +4,6 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { app } from "@/firebase";
 import { toast } from "sonner";
 import axios from "axios";
-import { ServerAPI } from "@/config";
 import loadingToast from "./loading-toast";
 
 export default function LoginPage() {
@@ -61,7 +60,6 @@ export default function LoginPage() {
 export function GoogleButton() {
   const provider = new GoogleAuthProvider();
   const auth = getAuth(app);
-  // const { toast } = useToast();
   const navigate = useNavigate();
   const handleGoogleSignIn = () => {
     console.log("Google sign-in clicked");
@@ -72,8 +70,7 @@ export function GoogleButton() {
         const user = result.user;
         console.log(user);
         loadingToast("Logging In ...");
-        // send a backend request where to create account or log them
-        const data = await axios.post(`${ServerAPI}/user/check-user`, {
+        const data = await axios.post(`${import.meta.env.VITE_ServerAPI}/user/check-user`, {
           name: user.displayName,
           email: user.email,
           uid: user.uid,
@@ -93,9 +90,6 @@ export function GoogleButton() {
         const errorCode = error.code;
         const errorMessage = error.message;
         toast(errorMessage);
-        // toast("Error Logging In", {
-        //   description: "Internal Server Error occurred",
-        // });
         console.log(errorCode, errorMessage);
       });
   };
