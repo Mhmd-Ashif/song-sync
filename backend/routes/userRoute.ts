@@ -45,4 +45,5 @@ router.post("/check-user", checkToken, async (req: any, res: any) => {
   }
 });
 
-module.exports = router;
+// module.exports = router;
+export default router;

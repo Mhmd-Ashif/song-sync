@@ -11,7 +11,9 @@ const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const { v4: uuidv4 } = require("uuid");
-const UserRouter = require("./routes/userRoute");
+// const UserRouter = require("./routes/userRoute");
+import UserRouter from "./routes/userRoute";
+
 const app = express();
 const PORT = 3000;
 const socketIo = require("socket.io");
