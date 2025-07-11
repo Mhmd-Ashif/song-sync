@@ -18,8 +18,20 @@ const app = express();
 const PORT = 3000;
 const socketIo = require("socket.io");
 
-app.use(cors());
+// app.use(cors());
+
+app.use(cors({
+  origin: [
+    "http://localhost:3000",         
+    "https://song-sync-eta.vercel.app/"    
+  ],
+  credentials: true
+}))
+
 app.use(express.json());
+
+app.options("*", cors());
+
 const server = http.createServer(app);
 
 const io = socketIo(server);

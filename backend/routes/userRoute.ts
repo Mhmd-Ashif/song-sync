@@ -11,6 +11,7 @@ interface Body {
 }
 
 router.post("/check-user", checkToken, async (req: any, res: any) => {
+  console.log("user checking....");
   try {
     const { name, email, uid }: Body = req.body;
     const ifUserExist = await prisma.user.findUnique({
