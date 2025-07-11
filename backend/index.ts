@@ -15,18 +15,17 @@ const { v4: uuidv4 } = require("uuid");
 import UserRouter from "./routes/userRoute";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const socketIo = require("socket.io");
 
 // app.use(cors());
 
-app.use(cors({
-  origin: [
-    "http://localhost:3000",         
-    "https://song-sync-eta.vercel.app/"    
-  ],
-  credentials: true
-}))
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://song-sync-eta.vercel.app/"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
