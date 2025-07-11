@@ -20,6 +20,9 @@ import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 export const socket = io(import.meta.env.VITE_SocketAPI, {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
   transports: ["websocket"],
 });
 
@@ -37,7 +40,6 @@ export default function Dashboard() {
     localStorage.removeItem("userType");
     localStorage.removeItem("ownerId");
   }, []);
-
 
   const joinRoom = async () => {
     console.log(value);
