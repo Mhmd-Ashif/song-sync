@@ -1,3 +1,4 @@
+console.log("🟢 Environment Variables:", JSON.stringify(process.env, null, 2));
 import { addSongtoQueue, popSongAndUpdateNext } from "./functions/song";
 import {
   addUserToRoom,
@@ -13,6 +14,9 @@ const http = require("http");
 const { v4: uuidv4 } = require("uuid");
 // const UserRouter = require("./routes/userRoute");
 import UserRouter from "./routes/userRoute";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +52,14 @@ app.use("/api/user", UserRouter);
 
 app.get("/", (req: any, res: any) => {
   res.json("hi there");
+});
+
+app.get("/health", (req: any, res: any) => {
+  res.json({
+    status: "healthy",
+    server: true,
+    redis: client.isOpen, // Example Redis check
+  });
 });
 
 interface RoomState {
@@ -249,6 +261,22 @@ setInterval(async () => {
 }, 8 * 60 * 1000);
 
 server.listen(PORT, "0.0.0.0", async () => {
-  await client.connect();
-  console.log(`Server running on ${PORT}`);
+  console.log(`🚀 Server started on port ${PORT}`);
+
+  try {
+    await Promise.all([client.connect(), prisma.$connect()]);
+    console.log("✅ All dependencies connected");
+  } catch (err) {
+    console.error("❌ Dependency connection failed:", err);
+  }
+});
+
+// 4. Error handling
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled rejection:", err);
+});
+
+server.on("error", (err) => {
+  console.error("Server error:", err);
+  process.exit(1);
 });

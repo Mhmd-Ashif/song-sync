@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+console.log("🟢 Environment Variables:", JSON.stringify(process.env, null, 2));
 const song_1 = require("./functions/song");
 const user_1 = require("./functions/user");
 const redis_1 = require("./redis");
@@ -21,6 +22,8 @@ const http = require("http");
 const { v4: uuidv4 } = require("uuid");
 // const UserRouter = require("./routes/userRoute");
 const userRoute_1 = __importDefault(require("./routes/userRoute"));
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const socketIo = require("socket.io");
@@ -45,6 +48,13 @@ const io = socketIo(server, {
 app.use("/api/user", userRoute_1.default);
 app.get("/", (req, res) => {
     res.json("hi there");
+});
+app.get("/health", (req, res) => {
+    res.json({
+        status: "healthy",
+        server: true,
+        redis: redis_1.client.isOpen, // Example Redis check
+    });
 });
 const roomStates = {};
 io.on("connection", (socket) => {
@@ -196,6 +206,20 @@ setInterval(() => __awaiter(void 0, void 0, void 0, function* () {
     }
 }), 8 * 60 * 1000);
 server.listen(PORT, "0.0.0.0", () => __awaiter(void 0, void 0, void 0, function* () {
-    yield redis_1.client.connect();
-    console.log(`Server running on ${PORT}`);
+    console.log(`🚀 Server started on port ${PORT}`);
+    try {
+        yield Promise.all([redis_1.client.connect(), prisma.$connect()]);
+        console.log("✅ All dependencies connected");
+    }
+    catch (err) {
+        console.error("❌ Dependency connection failed:", err);
+    }
 }));
+// 4. Error handling
+process.on("unhandledRejection", (err) => {
+    console.error("Unhandled rejection:", err);
+});
+server.on("error", (err) => {
+    console.error("Server error:", err);
+    process.exit(1);
+});
