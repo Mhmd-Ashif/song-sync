@@ -4,7 +4,6 @@ import { PrismaClient } from "@prisma/client";
 import { checkToken } from "../middlewares/authToken";
 const prisma = new PrismaClient();
 
-// only we are check the user
 interface Body {
   name: string;
   email: string;

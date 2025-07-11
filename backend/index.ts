@@ -6,12 +6,10 @@ import {
   deleteRoom,
   leaveRoom,
 } from "./functions/user";
-
 import { client } from "./redis";
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
-const { Server } = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
 const UserRouter = require("./routes/userRoute.ts");
 const app = express();
@@ -80,7 +78,6 @@ io.on("connection", (socket: any) => {
     }
   });
 
-  // songs socket routes fr
   socket.on("add-song", async ({ roomId, ytData }: any, callback: any) => {
     if (!roomId || !ytData) {
       console.error("Missing roomId or song:", { roomId, ytData });
@@ -186,9 +183,6 @@ io.on("connection", (socket: any) => {
     }
   );
 
-  // disconnect from a room
-  // 1-audience will leave the room
-  // 2-creator will delete the room and remove all the users
 
   socket.on("leave-room", async (roomId: string, callback: any) => {
     const result = await leaveRoom(roomId, socket.id);
@@ -203,10 +197,8 @@ io.on("connection", (socket: any) => {
       for (const socketId of room) {
         const userSocket = io.sockets.sockets.get(socketId);
         if (userSocket) {
-          // the backend will emit to front end so that all users which are connect to that
-          // room will get notified
+
           userSocket.emit("removed-from-room", { roomId });
-          // technically i need to delete the room
           userSocket.leave(roomId);
         }
       }
@@ -219,8 +211,6 @@ io.on("connection", (socket: any) => {
   });
 
   socket.on("disconnect", (reason: any) => {
-    // manual remove thaan pola
-    // enter all room and remove the socketid from the users - tffffff - not optimal
     console.log("reload happend so disconnect happend");
     console.log(
       `User disconnected. Socket ID: ${socket.id}, Reason: ${reason}`
@@ -228,15 +218,14 @@ io.on("connection", (socket: any) => {
   });
 });
 
-// redis is becoming inactive after 15dys so hitting every 8 mins
-// setInterval(async () => {
-//   try {
-//     const pong = await client.ping();
-//     console.log("Redis ping:", pong);
-//   } catch (err: any) {
-//     console.error("Ping failed", err.message);
-//   }
-// }, 8 * 60 * 1000);
+setInterval(async () => {
+  try {
+    const pong = await client.ping();
+    console.log("Redis ping:", pong);
+  } catch (err: any) {
+    console.error("Ping failed", err.message);
+  }
+}, 8 * 60 * 1000);
 
 server.listen(PORT, async () => {
   client.on("error", (err) => console.log("Redis Client Error", err));

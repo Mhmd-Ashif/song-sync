@@ -1,7 +1,5 @@
-import { json } from "stream/consumers";
 import { client } from "../redis";
 
-//testing purpose
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const createRoom = async (
@@ -62,7 +60,6 @@ export const addUserToRoom = async (
 export const checkRoom = async (roomId: string, ownerId: string) => {
   try {
     const roomKey = `room:${roomId}`;
-    // get the data from the redis
     const roomData = await client.hGetAll(roomKey);
     if (roomData.status) {
       return { success: true, owner: roomData.ownerId };

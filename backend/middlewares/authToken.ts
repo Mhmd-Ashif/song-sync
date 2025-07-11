@@ -1,8 +1,6 @@
 require("dotenv").config();
 const admin = require("firebase-admin");
-// const serviceAccount = require("./song-sync-40dba-firebase-adminsdk-mg1gr-8d7c570ca3.json");
 const serviceAccount = JSON.parse(process.env.ADMIN_AUTH || "");
-// const serviceAccount = env("DATABASE_URL")
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
